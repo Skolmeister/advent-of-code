@@ -84,3 +84,21 @@ user_statistic <- list(
       name == "Alex N"
     )
 )
+
+# Scoring based on completion time of part 2
+
+single_day |>
+  dplyr::select(name, day, time_between_stars) |>
+  dplyr::filter(!is.na(time_between_stars)) |>
+  dplyr::group_by(day) |>
+  dplyr::mutate(
+    rank = dplyr::min_rank(time_between_stars),
+    points = 101 - rank
+  ) |> 
+  dplyr::ungroup() |>
+  dplyr::summarise(
+    points = sum(points),
+    .by = "name"
+  ) |>
+  dplyr::arrange(desc(points))
+
