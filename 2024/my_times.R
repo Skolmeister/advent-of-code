@@ -1,11 +1,5 @@
-leaderboard <- "https://adventocode.com/2024/leaderboard/private/view/1032765.json"
+leaderboard <- "https://adventofcode.com/2024/leaderboard/private/view/1032765.json"
 session <- dotenv::load_dot_env()
-jsonlite::fromJSON(leaderboard)
-stars <- httr::GET(
-  "https://adventofcode.com/2023/leaderboard/private/view/1032765.json",
-  httr::accept_json(),
-  httr::user_agent("Alex Nickel https://github.com/Skolmeister")
-)
 
 req <- httr2::request(leaderboard) |>
   httr2::req_headers(
@@ -13,13 +7,14 @@ req <- httr2::request(leaderboard) |>
     `user-agent` = "Alex Nickel https://github.com/Skolmeister",
     accept = "application/json"
   )
+
 resp <- req |>
   httr2::req_perform()
 
 json_output <- resp |>
   httr2::resp_body_json()
 
-members <- json_output[[1]]
+members <- json_output[["members"]]
 
 extract_leaderboard <- function(entry) {
   if (!"name" %in% names(unlist(entry))) {
@@ -87,7 +82,7 @@ user_statistic <- list(
 
 # Scoring based on completion time of part 2
 
-single_day |>
+new_scores <- single_day |>
   dplyr::select(name, day, time_between_stars) |>
   dplyr::filter(!is.na(time_between_stars)) |>
   dplyr::group_by(day) |>

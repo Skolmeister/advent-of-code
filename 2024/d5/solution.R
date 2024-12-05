@@ -1,3 +1,7 @@
+# Future is not really needed here, just for fun (normal runtime is about 40 seconds, with easy parallelization its 20 seconds)
+library(future)
+plan("multisession")
+
 input <- readLines(here::here("2024", "d5", "input"))
 
 rules <- input[1:(which(input == "")-1)] |>
@@ -66,20 +70,25 @@ check_update <- function(update, part) {
   }
 }
 
-result_rule_check <- purrr::map_int(
+tictoc::tic()
+result_rule_check <- furrr::future_map_int(
   updates,
   \(x) check_update(x, part = 1)
 ) 
 
 part1 <- result_rule_check |>
 sum()
-
+cli::cli_alert_info("Part 1 solution found!")
+tictoc::toc()
+tictoc::tic()
 updates_to_sort <- updates[which(result_rule_check == 0)]
 
-new_sorted <- purrr::map_int(
+new_sorted <- furrr::future_map_int(
   updates_to_sort,
   \(x) check_update(x, part = 2)
 ) 
 
 part2 <- new_sorted |>
 sum()
+cli::cli_alert_info("Part 2 solution found!")
+tictoc::toc()
