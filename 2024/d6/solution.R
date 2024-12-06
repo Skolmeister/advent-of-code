@@ -51,25 +51,39 @@ start_point <- which(
   arr.ind = TRUE
 )
 
-tictoc::tic()
 point <- start_point
 test <- function(i_mat, point, part) {
-  count <- 0
   dir <- get_direction(check_symbol(i_mat, point))
   mat <- i_mat
   repeat {
-    next_point <- mat[point + dir]
-    if (is.na(next_point)) {
+    next_symbol <- mat[point + dir]
+    if (is.na(next_symbol)) {
       break
-    } else if (next_point == "#") {
+    } else if (next_symbol == "#") {
       old_dir <- dir
       dir <- change_direction(dir)
+      check_next_point <- check_symbol(i_mat, point + dir)
+      if (check_next_point != "#") {
       sym <- change_direction_symbol(check_symbol(mat, point))
+      } else {
+        while (check_next_point == "#") {
+        sym <- change_direction_symbol(
+          change_direction_symbol(
+          check_symbol(
+            mat, point
+            )
+          )
+        )
+      dir <- change_direction(dir)
+      check_next_point <- check_symbol(i_mat, point + dir)
+      mat[point] <- sym
+      break
+        }
+      }
     } else {
       sym <- check_symbol(mat, point)
     }
     point <- point + dir
-    count <- count + 1
     mat_prev <- mat
     mat[point] <- sym
     if (part == 2) {
@@ -82,17 +96,17 @@ test <- function(i_mat, point, part) {
     }
   }
   if (part == 1) {
-    return(list(mat, count))
+    return(mat)
   } else {
-    if (loop) {
-      print(mat)
-    }
-    return(list(loop, count))
+    return(loop)
   }
 }
 
+tictoc::tic()
 res <- test(input_matrix, start_point, part = 1)
-positions <- which(res[[1]] != "." & res[[1]] != "#" & !is.na(res[[1]]), arr.ind = TRUE)
+tictoc::toc()
+positions <- which(res != "." & res != "#" & !is.na(res), arr.ind = TRUE)
+part1 <- nrow(positions)
 
 mat <- input_matrix
 
@@ -116,7 +130,31 @@ for (i in seq_len(nrow(positions))) {
 }
 loops
 
+get_loop <- function(mat, positions, index, start_point) {
+  if (identical(c(positions[index, ], use.names = FALSE), c(start_point))) {
+    return()
+  }
 
+  construct_obstacle(
+    mat = mat,
+    position = positions[index, ],
+    start_point
+  )
+
+}
+
+tictoc::tic()
+furrr::future_map_lgl(
+  seq_len(part1),
+  \(x) get_loop(
+    input_matrix,
+    positions,
+    x,
+    start_point
+  ),
+  .progress = TRUE
+)
+tictoc::toc()
 part1 <- length(which(mat != "." & mat != "#" & !is.na(mat)))
 tictoc::toc()
 
