@@ -13,20 +13,27 @@ input_matrix <- input |>
 
 input_matrix <- rbind(NA, cbind(NA, input_matrix, NA), NA)
 
-get_direction <- function(mat, point) {
+get_direction <- function(mat, point, reverse) {
   dir <- mat[point]
   index <- dplyr::case_when(
     dir == "^" ~ c(-1, 0),
     dir == ">" ~ c(0, 1),
-    dir == "<" ~ c(0, -1),
-    dir == "V" ~ c(1, 0)
+    dir == "V" ~ c(1, 0),
+    dir == "<" ~ c(0, -1)
   )
-  # index_to_move <- point + index
-
   return(index)
 }
 
-change_direction <- function(symbol) {
+change_direction <- function(dir) {
+dplyr::case_when(
+    identical(dir, c(-1, 0)) ~ c(0, 1),
+    identical(dir, c(0, 1))  ~ c(1, 0),
+    identical(dir, c(1, 0))  ~ c(0, -1),
+    identical(dir, c(0, -1)) ~ c(-1, 0)
+  )
+}
+
+change_direction_symbol <- function(symbol) {
   dplyr::case_when(
     symbol == "^" ~ ">",
     symbol == ">" ~ "V",
@@ -39,103 +46,80 @@ check_symbol <- function(mat, pos) {
   mat[pos[1, 1], pos[1, 2]]
 }
 
-
-
-count_positions <- function(mat, start_point, type) {
-  direction <- get_direction(mat, start_point)
-  symbol_start <- check_symbol(mat, start_point)
-  position <- start_point
-  current_symbol <- check_symbol(mat, start_point)
-  move_index <- list(start_point)
-  # while (!is.na(check_symbol(mat, position))) {
-    repeat {
-    prev_symbol <- check_symbol(mat, position)
-    position <- position + direction
-    current_symbol <- check_symbol(mat, position)
-    if (is.na(current_symbol)) {
-      if (type == 1) {
-        break
-      } else if (type == 2) {
-        return()
-      }
-    } else if (current_symbol != "#") {
-      mat_old <- mat
-      move_index <- append(list(position), move_index)
-      mat[position[1, 1], position[1, 2]] <- prev_symbol
-      
-      loop_match <- all((mat_old == mat) == TRUE, na.rm = TRUE)
-      # print(mat[position[1, 1], position[1, 2]] == prev_symbol)
-    } else if (!is.na(current_symbol)) {
-      new_symbol <- change_direction(
-        check_symbol(
-          mat,
-          pos = matrix(move_index[[1]][1, ], ncol = 2)
-        )
-      )
-      prev_position <- position - direction
-      mat_old <- mat
-      mat[prev_position[1, 1], prev_position[1, 2]] <- new_symbol
-      loop_match <- all((mat_old == mat) == TRUE, na.rm = TRUE)
-      direction <- get_direction(mat, prev_position)
-      position <- prev_position
-    }
-
-    if (loop_match) {
-      break
-    }
-
-    # if (all(position == start_point)) {
-    #   symbol_start <- c(symbol_start, check_symbol(mat, start_point))
-    #   print(symbol_start)
-    #   if (any(table(symbol_start) > 1)) {
-    #     break
-    #   }
-    # }
-    
-  }
-
-  return(
-    list(
-      mat,
-      length(which(mat %in% c("^", "V", ">", "<"))),
-      move_index
-    )
-  )
-}
-
 start_point <- which(
   input_matrix != "." & input_matrix != "#",
   arr.ind = TRUE
 )
 
-part1 <- count_positions(input_matrix, start_point, type = 1) 
-
-positions <- part1[[3]]
-
-positions_unique <- purrr::reduce(positions, rbind) |>
-  unique() |>
-  tibble::as_tibble() |>
-  tibble::rownames_to_column() |>
-  dplyr::group_by(rowname) |>
-  dplyr::group_split() |>
-  purrr::map(
-    \(x) matrix(dplyr::select(x, -rowname), ncol = 2)
-  )
-
-construct_obstacle <- function(mat, position, start_point) {
-  mat[unlist(position[1,1]), unlist(position[1,2])] <- "#"
-  count_positions(mat, start_point, type = 2)
+tictoc::tic()
+point <- start_point
+test <- function(i_mat, point, part) {
+  count <- 0
+  dir <- get_direction(check_symbol(i_mat, point))
+  mat <- i_mat
+  repeat {
+    next_point <- mat[point + dir]
+    if (is.na(next_point)) {
+      break
+    } else if (next_point == "#") {
+      old_dir <- dir
+      dir <- change_direction(dir)
+      sym <- change_direction_symbol(check_symbol(mat, point))
+    } else {
+      sym <- check_symbol(mat, point)
+    }
+    point <- point + dir
+    count <- count + 1
+    mat_prev <- mat
+    mat[point] <- sym
+    if (part == 2) {
+      if (all((mat_prev == mat) == TRUE, na.rm = TRUE)) {
+        loop <- TRUE
+        break
+      } else {
+        loop <- FALSE
+      }
+    }
+  }
+  if (part == 1) {
+    return(list(mat, count))
+  } else {
+    if (loop) {
+      print(mat)
+    }
+    return(list(loop, count))
+  }
 }
 
-part2 <- furrr::future_map(
-  positions_unique,
-  \(x) construct_obstacle(
-    mat = input_matrix,
-    position = x,
-    start_point = start_point
-  )[[1]],
-  .progress = TRUE
-)
+res <- test(input_matrix, start_point, part = 1)
+positions <- which(res[[1]] != "." & res[[1]] != "#" & !is.na(res[[1]]), arr.ind = TRUE)
 
-length(part2[lengths(part2) != 0])
+mat <- input_matrix
+
+construct_obstacle <- function(mat, position, start_point) {
+  mat[unlist(position[1]), unlist(position[2])] <- "#"
+  test(i_mat = mat, point = start_point, part = 2)
+}
+
+construct_obstacle(input_matrix, position = positions[1,], start_point)
+
+loops <- 0
+count <- c()
+for (i in seq_len(nrow(positions))) {
+  print(i)
+  if (identical(c(positions[i,], use.names = FALSE), c(start_point))) {
+    next
+  }
+  res <- construct_obstacle(mat = input_matrix, position = positions[i, ], start_point)
+  loops <- loops + res[[1]]
+  count <- c(count, res[[2]])
+}
+loops
+
+
+part1 <- length(which(mat != "." & mat != "#" & !is.na(mat)))
+tictoc::toc()
+
+ind <- unique(which(mat == "X", arr.ind = TRUE))
+
 
