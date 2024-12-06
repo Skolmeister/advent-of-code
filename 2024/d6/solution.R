@@ -1,5 +1,5 @@
 library(future)
-plan(multisession)
+plan(sequential)
 input <- readLines(here::here("2024", "d6", "input"))
 
 input_matrix <- input |>
@@ -62,7 +62,7 @@ test <- function(i_mat, point, part) {
     } else if (next_symbol == "#") {
       old_dir <- dir
       dir <- change_direction(dir)
-      check_next_point <- check_symbol(i_mat, point + dir)
+      check_next_point <- check_symbol(mat, point + dir)
       if (check_next_point != "#") {
       sym <- change_direction_symbol(check_symbol(mat, point))
       } else {
@@ -74,8 +74,8 @@ test <- function(i_mat, point, part) {
             )
           )
         )
-      dir <- change_direction(dir)
-      check_next_point <- check_symbol(i_mat, point + dir)
+      dir <- change_direction(change_direction(dir))
+      check_next_point <- check_symbol(mat, point + dir)
       mat[point] <- sym
       break
         }
@@ -103,7 +103,7 @@ test <- function(i_mat, point, part) {
 }
 
 tictoc::tic()
-res <- test(input_matrix, start_point, part = 1)
+res <- test(input_matrix, point = start_point, part = 1)
 tictoc::toc()
 positions <- which(res != "." & res != "#" & !is.na(res), arr.ind = TRUE)
 part1 <- nrow(positions)
@@ -115,7 +115,6 @@ construct_obstacle <- function(mat, position, start_point) {
   test(i_mat = mat, point = start_point, part = 2)
 }
 
-construct_obstacle(input_matrix, position = positions[1,], start_point)
 
 loops <- 0
 count <- c()
@@ -125,8 +124,7 @@ for (i in seq_len(nrow(positions))) {
     next
   }
   res <- construct_obstacle(mat = input_matrix, position = positions[i, ], start_point)
-  loops <- loops + res[[1]]
-  count <- c(count, res[[2]])
+  loops <- loops + res
 }
 loops
 
