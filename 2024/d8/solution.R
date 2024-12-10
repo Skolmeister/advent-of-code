@@ -12,6 +12,26 @@ input_matrix <- input |>
 input_frequencies <- names(table(input_matrix))
 frequencies <- input_frequencies[input_frequencies != "."]
 
+get_antinode_indexes <- function(antenna, all_antennas) {
+  move_first <- matrix(all_antennas[antenna, ] - as.vector(t(all_antennas)), ncol = 2, byrow = TRUE)
+  move_second <- move_first * 2
+
+  first_node <- matrix(all_antennas[antenna, ] + as.vector(t(move_first)), ncol = 2, byrow = TRUE)
+  second_node <- matrix(all_antennas[antenna, ] - as.vector(t(move_second)), ncol = 2, byrow = TRUE)
+
+  antinodes <- rbind(
+    first_node,
+    second_node
+  ) |>
+    dplyr::as_tibble() |>
+    dplyr::rename(
+      "row" = V1,
+      "col" = V2
+    )
+
+  return(antinodes)
+}
+
 create_antinodes <- function(frequency, mat, part) {
   antennas <- which(mat == frequency, arr.ind = TRUE)
 
@@ -38,26 +58,6 @@ create_antinodes <- function(frequency, mat, part) {
       dplyr::as_tibble(antennas),
       by = c("row", "col")
     )
-}
-
-get_antinode_indexes <- function(antenna, all_antennas) {
-  move_first <- matrix(all_antennas[antenna, ] - as.vector(t(all_antennas)), ncol = 2, byrow = TRUE)
-  move_second <- move_first * 2
-
-  first_node <- matrix(all_antennas[antenna, ] + as.vector(t(move_first)), ncol = 2, byrow = TRUE)
-  second_node <- matrix(all_antennas[antenna, ] - as.vector(t(move_second)), ncol = 2, byrow = TRUE)
-
-  antinodes <- rbind(
-    first_node,
-    second_node
-  ) |>
-    dplyr::as_tibble() |>
-    dplyr::rename(
-      "row" = V1,
-      "col" = V2
-    )
-
-  return(antinodes)
 }
 
 part1 <- purrr::map_df(
